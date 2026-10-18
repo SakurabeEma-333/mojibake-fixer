@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>乱码一键恢复 · Mojibake Fixer</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --line:#e6e8ec; --text:#1a1d23; --sub:#6b7280;
+    --accent:#2f6bf3; --accent-soft:#eaf0fe;
+    --ok:#12925f; --ok-soft:#e7f6ef;
+    --warn:#c2740a; --warn-soft:#fdf3e2;
+    --fix:#c2410c; --fix-soft:#fdeee5;
+    --skip:#6b7280; --skip-soft:#f0f1f4;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font:14px/1.6 "Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:34px 20px 80px}
+  header h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px;font-weight:600}
+  header h1 span{font-size:12px;font-weight:400;color:var(--sub);margin-left:8px;letter-spacing:.5px}
+  header p{margin:0 0 22px;color:var(--sub);font-size:13px}
+
+  .drop{
+    background:var(--card);border:1.5px dashed #cfd4dc;border-radius:16px;
+    padding:30px 20px;text-align:center;transition:.18s;cursor:default;
+  }
+  .drop.over{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-1px)}
+  .drop .big{font-size:15px;margin:2px 0 12px}
+  .drop .big b{font-weight:600}
+  .drop .hint{color:var(--sub);font-size:12px;margin:10px 0 0}
+  .btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+  button{
+    font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);
+    background:#fff;color:var(--text);padding:7px 14px;transition:.15s;
+  }
+  button:hover{border-color:#c3c9d4;background:#fafbfc}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;padding:8px 18px}
+  button.primary:hover{background:#2557d6;border-color:#2557d6}
+  button.ghost{padding:4px 9px;font-size:12px;color:var(--sub);background:transparent;border-color:transparent}
+  button.ghost:hover{color:var(--text);background:#f1f3f6;border-color:transparent}
+  button.small{padding:5px 11px;font-size:12.5px}
+
+  .opts{display:flex;gap:18px;flex-wrap:wrap;align-items:center;margin:16px 2px 18px;color:var(--sub);font-size:12.5px}
+  .opts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+  .opts select{font:inherit;font-size:12.5px;padding:3px 6px;border-radius:7px;border:1px solid var(--line);background:#fff;color:var(--text)}
+  .diagbar{margin:-4px 2px 14px}
+  #diag{margin:8px 0 0;max-height:220px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:11.5px/1.7 Consolas,"Courier New",monospace;white-space:pre-wrap;word-break:break-all;color:#39424f}
+
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .bar{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .bar .left{display:flex;align-items:center;gap:14px;font-size:12.5px;color:var(--sub);flex-wrap:wrap}
+  .bar .left b{color:var(--text)}
+  #summary .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin:0 4px 0 10px;vertical-align:middle}
+  .dot{background:#c9ced6}
+  .dot.fix{background:var(--fix)} .dot.conv{background:var(--accent)}
+  .dot.ok{background:var(--ok)} .dot.skip{background:var(--skip)}
+  #search{font:inherit;font-size:12.5px;padding:5px 10px;border-radius:8px;border:1px solid var(--line);width:150px}
+
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th,td{text-align:left;padding:10px 14px;vertical-align:middle}
+  thead th{font-size:11.5px;font-weight:600;color:var(--sub);background:#fbfcfd;border-bottom:1px solid var(--line);letter-spacing:.3px}
+  tbody tr.row{border-bottom:1px solid #f1f3f6}
+  tbody tr.row:hover{background:#fbfcfe}
+  tr.row.off{opacity:.55}
+  .c-sel{width:38px} .c-st{width:104px} .c-chain{width:210px} .c-act{width:104px;text-align:right;white-space:nowrap}
+  .fname{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .meta{font-size:11.5px;color:var(--sub)}
+  .badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:20px;border:1px solid transparent;white-space:nowrap}
+  .badge.fix{background:var(--fix-soft);color:var(--fix)}
+  .badge.conv{background:var(--accent-soft);color:var(--accent)}
+  .badge.ok{background:var(--ok-soft);color:var(--ok)}
+  .badge.skip,.badge.warn{background:var(--skip-soft);color:var(--warn)}
+  .enc{font-family:Consolas,"Courier New",monospace;font-size:11.5px;color:var(--sub)}
+  .enc.to{color:var(--accent)}
+  .arrow{color:#b7bdc7;margin:0 5px}
+  .sep{color:#c8ced8;margin:0 6px}
+
+  tr.detail td{background:#fcfdff;border-bottom:1px solid var(--line);padding:0 14px 16px}
+  .detail-inner{padding-top:12px}
+  .reason{font-size:12.5px;color:var(--sub);margin-bottom:10px}
+  .lost{margin:0 0 10px;font-size:12.5px;line-height:1.7;color:#8a5206;background:var(--warn-soft);border:1px solid #f2e0bd;border-radius:9px;padding:8px 11px}
+  .lost b{color:#7a4600}
+  .lostmini{color:var(--warn);font-size:11px}
+  .pane{margin-bottom:10px}
+  .pane-h{font-size:11.5px;color:var(--sub);margin:0 0 4px;letter-spacing:.3px}
+  .pane pre{
+    margin:0;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+    font-family:Consolas,"Courier New",monospace;font-size:12px;line-height:1.65;
+    white-space:pre-wrap;word-break:break-all;max-height:148px;overflow:auto;color:#333a45;
+  }
+  select.cand{font:inherit;font-size:12.5px;padding:6px 9px;border-radius:8px;border:1px solid var(--line);background:#fff;max-width:100%}
+
+  #empty{margin-top:26px;text-align:center;color:var(--sub);font-size:12.5px;line-height:1.9}
+  #empty b{color:var(--text);font-weight:600}
+  .toast{
+    position:fixed;left:50%;bottom:34px;transform:translate(-50%,14px);opacity:0;pointer-events:none;
+    background:#22262e;color:#fff;padding:9px 18px;border-radius:10px;font-size:13px;transition:.22s;z-index:9;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.warn{background:#a35c06} .toast.ok{background:#0f7a4f}
+  footer{margin-top:26px;color:var(--sub);font-size:11.5px;line-height:2}
+  footer code{background:#eceff3;padding:1px 5px;border-radius:4px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>乱码一键恢复<span>MOJIBAKE FIXER</span></h1>
+    <p>自动识别「编码错认」造成的乱码并还原原文：Shift_JIS / GBK / Big5 / UTF-8 互相错读、以及叠加两层的坏死。</p>
+  </header>
+
+  <div class="drop" id="drop">
+    <div class="big">把文件或文件夹拖到这里，或 <b>点击选择</b></div>
+    <div class="btns">
+      <button id="pickFiles">选择文件</button>
+      <button id="pickDir">选择文件夹</button>
+    </div>
+    <p class="hint">支持 .txt .md .csv .srt .ini .html .json 等文本文件，可一次多个；文件全程在你本机处理，不上传</p>
+    <input type="file" id="fileInput" multiple hidden>
+    <input type="file" id="dirInput" webkitdirectory hidden>
+  </div>
+
+  <div class="opts">
+    <label><input type="checkbox" id="optBom" checked> 输出 UTF-8 时加 BOM（Windows 记事本可直接正确显示）</label>
+    <label>输出编码
+      <select id="optOut">
+        <option value="utf-8">UTF-8（推荐）</option>
+        <option value="keep">保持还原出的原编码</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="diagbar">
+    <button class="ghost" id="btnDiag">诊断信息（拖拽无效时点这里看原因）</button>
+    <pre id="diag" hidden></pre>
+  </div>
+
+  <div class="panel" id="listWrap" hidden>
+    <div class="bar">
+      <div class="left">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" id="checkAll" checked> 全选
+        </label>
+        <span id="summary"></span>
+      </div>
+      <div class="btns" style="justify-content:flex-end">
+        <input id="search" placeholder="搜索文件名">
+        <button class="small" id="btnClear">清空</button>
+        <button class="primary" id="btnFix">一键恢复并下载</button>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th class="c-sel"></th>
+          <th>文件名</th>
+          <th class="c-st">状态</th>
+          <th class="c-chain">编码</th>
+          <th class="c-act"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div id="empty" hidden>
+    拖进来的文件会显示在这里。<br>
+    识别结果同时给出 <b>三种信息</b>：现在的内容、还原后的内容、以及用了哪条还原链。
+  </div>
+
+  <footer>
+    快捷键 <code>Ctrl + Enter</code> 直接导出。<br>
+    判断原理：把乱码按“当初误读它的编码”写回字节，再用正确编码重读，并按日文假名比例、常用字库覆盖率、是否仍是中间状态综合打分，取最优链路；找不到更可信的结果就<b>原样不动</b>，不会乱改你的文件。
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+/*__ZIP__*/
+</script>
+<script>
+/*__APP__*/
+</script>
+</body>
+</html>

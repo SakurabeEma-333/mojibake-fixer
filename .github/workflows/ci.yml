@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 引擎回归测试
+        run: node tests/engine.test.mjs
+
+      - name: 构建单文件
+        run: node build.mjs
+
+      - name: 检查产物
+        run: |
+          test -s dist/mojibake-fixer.html
+          grep -q "MojibakeEngine" dist/mojibake-fixer.html
+          echo "产物大小: $(wc -c < dist/mojibake-fixer.html) bytes"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mojibake-fixer-html
+          path: dist/mojibake-fixer.html
+          if-no-files-found: error

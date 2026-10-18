@@ -1,0 +1,17 @@
+{
+  "name": "mojibake-fixer",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "离线乱码一键恢复：识别并还原 Shift_JIS / GBK / Big5 / EUC-JP / UTF-8 互错读造成的乱码",
+  "keywords": ["mojibake", "encoding", "shift_jis", "gbk", "utf-8", "乱码"],
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node tests/engine.test.mjs",
+    "check": "node tests/engine.test.mjs && node build.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
