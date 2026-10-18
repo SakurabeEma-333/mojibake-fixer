@@ -141,14 +141,31 @@
     return { base, n, kana, cjk, bad, halfwidth, latin, lossy };
   }
 
+  /* 假名统计：真日文里假名总是成串出现，乱码产生的假名则一个个孤立地散在汉字中间 */
+  function kanaStats(text) {
+    let kana = 0, iso = 0;
+    const isK = (c) => (c >= 0x3041 && c <= 0x309F) || (c >= 0x30A0 && c <= 0x30FF);
+    for (let i = 0; i < text.length; i++) {
+      const c = text.charCodeAt(i);
+      if (!isK(c)) continue;
+      kana++;
+      const p = i > 0 ? text.charCodeAt(i - 1) : -1;
+      const n = i + 1 < text.length ? text.charCodeAt(i + 1) : -1;
+      if (!isK(p) && !isK(n)) iso++;
+    }
+    return { kana, iso };
+  }
+
   function score(text) {
     if (!text) return -1e6;
     const s = stats(text);
     if (!s.n) return -1e6;
+    const k = kanaStats(text);
     let v = s.base / s.n;
-    if (s.kana / s.n > 0.02) v += 1.4;   // 有假名 → 日文特征
-    v -= (s.lossy / s.n) * 8;            // 丢字
-    v -= (s.halfwidth / s.n) * 6;        // 半角片假名噪音
+    if (k.kana / s.n > 0.02) v += 1.4;          // 有假名 = 日文特征
+    if (k.kana >= 4) v -= 1.2 * (k.iso / k.kana); // 假名全部孤立的几乎肯定是乱码
+    v -= (s.lossy / s.n) * 3;                   // 丢字（权重不能太重，否则会为了“不丢字”而选垃圾结果）
+    v -= (s.halfwidth / s.n) * 6;               // 半角片假名噪音
     return v;
   }
 
